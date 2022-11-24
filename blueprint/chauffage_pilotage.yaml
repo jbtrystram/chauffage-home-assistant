@@ -38,9 +38,9 @@ blueprint:
 
 # Température pour le hors gel
 variables:
-  temperature_hg: 10
+  temperature_hg: 8
 
-alias: Pilotage chauffage bureau Patrick
+alias: Pilotage chauffage bureau
 description: ''
 trigger:
   - platform: state

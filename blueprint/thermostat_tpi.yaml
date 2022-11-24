@@ -40,13 +40,6 @@ blueprint:
         entity:
           domain: sensor
           device_class: temperature
-    entity_fenetre:
-      name: Fenêtre
-      description: Capteur d'ouverture de fenêtre (sensor)
-      selector:
-        entity:
-          domain: binary_sensor
-          device_class: opening
     entity_puissance:
       name: Puissance
       description: Champ d'affichage de la puissance (input_number)
@@ -55,10 +48,10 @@ blueprint:
           domain: input_number
     entity_chauffage:
       name: Chauffage
-      description: Interrupteur marche / arrêt du chauffage (switch)
+      description: Menu du chauffage (input_select)
       selector:
         entity:
-          domain: switch
+          domain: input_select
 
 # Récupération des paramètres
 variables:
@@ -66,15 +59,12 @@ variables:
   coeff_t: !input coeff_t
   entity_temp_int: !input entity_temp_int
   entity_temp_ext: !input entity_temp_ext
-  entity_fenetre: !input entity_fenetre
 
 trigger:
   - platform: time_pattern
     minutes: "/10"
   - platform: state
     entity_id: !input entity_consigne
-  - platform: state
-    entity_id: !input entity_fenetre
 
 
 action:
@@ -84,11 +74,10 @@ action:
       consigne: "{{states(entity_consigne)}}"
       temp_ext: '{{ states(entity_temp_ext) }}'
       temp_int: '{{ states(entity_temp_int) }}'
-      fenetre: '{{states(entity_fenetre)}}'     
       puissance: >-
         {%set val = coeff_c * (consigne - temp_int) + coeff_t * (consigne -
-        temp_ext) %}  {% if val > 1 and fenetre == 'off' %} {% set val = 100 %}  {% elif val < 0 or
-        fenetre == 'on' %} {% set val = 0 %}  {% else %} {% set val = ( (val *
+        temp_ext) %}  {% if val > 1 %} {% set val = 100 %}  {% elif val < 0 %} 
+        {% set val = 0 %}  {% else %} {% set val = ( (val *
         100) | round(0)) %} {% endif %} {{val}}
       temps_chauffe: '{{ puissance * 6 }}'
   - alias: Met à jour l'indicateur de puissance
@@ -102,22 +91,30 @@ action:
           - condition: template
             value_template: '{{puissance == 0}}'
         sequence:
-          - service: switch.turn_off
+          - service: input_select.select_option
+            data:
+              option: Arrêt
             target:
               entity_id: !input entity_chauffage
       - conditions:
           - condition: template
             value_template: '{{ puissance > 99}}'
         sequence:
-          - service: switch.turn_on
+          - service: input_select.select_option
+            data:
+              option: Confort
             target:
               entity_id: !input entity_chauffage
     default:
-      - service: switch.turn_on
+      - service: input_select.select_option
+        data:
+          option: Confort
         target:
           entity_id: !input entity_chauffage
       - delay: '{{temps_chauffe}}'
-      - service: switch.turn_off
+      - service: input_select.select_option
+        data:
+          option: Arrêt
         target:
           entity_id: !input entity_chauffage
 mode: restart
