@@ -20,16 +20,6 @@ blueprint:
           min: 0.0
           max: 0.1
           step: 0.001
-    delay:
-      name: Périodicité en minutes
-      description: Dépend de l’inertie du mode de chauffage utilisé. 30mn à 1 heure pour une chaudière, 10mn pour un convecteur on/off.
-      selector:
-        number:
-          mode: box
-          min: 0
-          max: 90
-          step: 1
-          unit_of_measurement: minutes
     entity_consigne:
       name: Consigne
       description: Champ d'entrée de la température de consigne (input number).
@@ -65,7 +55,6 @@ blueprint:
 
 # Récupération des paramètres
 variables:
-  delay: !input delay
   coeff_c: !input coeff_c
   coeff_t: !input coeff_t
   entity_temp_int: !input entity_temp_int
@@ -73,7 +62,7 @@ variables:
 
 trigger:
   - platform: time_pattern
-    minutes: "/{{delay}}"
+    minutes: "/10"
   - platform: state
     entity_id: !input entity_consigne
 
