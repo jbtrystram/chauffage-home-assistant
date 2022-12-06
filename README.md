@@ -65,6 +65,10 @@ timer:
     icon: mdi:timer
 ```
 
+### Schedule 
+
+In this setup I use the scheduler and scheduler card from HACS to setup the times and schedules. 
+See here: https://github.com/nielsfaber/scheduler-component 
 
 ### Lovelace Card
 
