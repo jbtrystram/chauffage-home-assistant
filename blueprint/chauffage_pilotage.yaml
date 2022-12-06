@@ -1,8 +1,7 @@
 blueprint:
   name: Pilotage chauffage
-  description: Gestion des différents modes de chauffage - Stop  Hors-gel  Auto confort Auto eco 
+  description: Gestion des différents modes de chauffage - Stop  Hors-gel  Auto Absent Manuel (Dérogation)
   domain: automation
-
   input:
     entity_consigne:
       name: Consigne
@@ -10,36 +9,47 @@ blueprint:
       selector:
         entity:
           domain: input_number
+          multiple: false
+    entity_derogation:
+      name: Durée de la dérogation
+      description: Champs d'entrée de la durée de la dérogation (input number)
+      selector:
+        entity:
+          domain: input_number
+          multiple: false
+    entity_timer_derogation:
+      name: Timer de la dérogation
+      description: Compteur du temps restant de la dérogation
+      selector:
+        entity:
+          domain: timer
+          multiple: false      
     entity_mode:
       name: Sélection du mode
       description: Entité de gestion du mode de gestion du chauffage (input_select)
       selector:
         entity:
           domain: input_select
+          multiple: false
     entity_schedule_confort:
       name: Schedule mode confort
-      description: Entité générée par schedule pour la planification du mode confort (switch)
+      description: Entité générée par schedule pour la planification du mode confort
+        (switch)
       selector:
         entity:
           domain: switch
-    entity_schedule_eco:
-      name: Schedule mode eco
-      description: Entité générée par schedule pour la planification du mode eco (switch)
-      selector:
-        entity:
-          domain: switch
+          multiple: false
     entity_thermostat_tpi:
       name: Thermostat
       description: Entité de gestion du thermostat TPI (automation)
       selector:
         entity:
           domain: automation
-
-
-# Température pour le hors gel
+          multiple: false
+  source_url: https://raw.githubusercontent.com/jbtrystram/chauffage-home-assistant/main/blueprint/chauffage_pilotage.yaml
 variables:
   temperature_hg: 8
-
+  temperature_absence: 17
 alias: Pilotage chauffage bureau
 description: ''
 trigger:
@@ -48,8 +58,7 @@ trigger:
 condition: []
 action:
   - choose:
-      # ----- Mode Stop
-      - conditions:
+      - conditions:   # ----------------- Mode STOP
           - condition: state
             entity_id: !input entity_mode
             state: Stop
@@ -62,13 +71,11 @@ action:
           - service: switch.turn_off
             target:
               entity_id:
-                - !input entity_schedule_eco
                 - !input entity_schedule_confort
           - service: automation.turn_off
             target:
               entity_id: !input entity_thermostat_tpi
-      # ----- Mode Hors-gel
-      - conditions:
+      - conditions: # ------------------- Mode HORS GEL
           - condition: state
             entity_id: !input entity_mode
             state: Hors-gel
@@ -84,13 +91,11 @@ action:
           - service: switch.turn_off
             target:
               entity_id:
-                - !input entity_schedule_eco
                 - !input entity_schedule_confort
-      # ----- Mode Auto - confort
-      - conditions:
+      - conditions: # ------------------- Mode Auto
           - condition: state
             entity_id: !input entity_mode
-            state: Auto - confort
+            state: Auto
         sequence:
           - service: automation.turn_on
             target:
@@ -98,20 +103,27 @@ action:
           - service: switch.turn_on
             target:
               entity_id: !input entity_schedule_confort
+      - conditions: # ------------------- Mode Absent
+          - condition: state
+            entity_id: !input entity_mode
+            state: Absent
+        sequence:
+          - service: automation.turn_on
+            target:
+              entity_id: !input entity_thermostat_tpi
+          - service: input_number.set_value
+            data:
+              value: '{{temperature_absence}}'
+            target:
+              entity_id: !input entity_consigne
           - service: switch.turn_off
             target:
               entity_id:
-                - !input entity_schedule_eco
-      # ----- Mode Auto - eco ou absent
-      - conditions:
-          - condition: or
-            conditions:
-              - condition: state
-                entity_id: !input entity_mode
-                state: 'Auto - eco'
-              - condition: state
-                entity_id: !input entity_mode
-                state: 'Absent'
+                - !input entity_schedule_confort
+      - conditions: # ------------------- Mode Dérogation
+          - condition: state
+            entity_id: !input entity_mode
+            state: Dérogation
         sequence:
           - service: automation.turn_on
             target:
@@ -120,15 +132,14 @@ action:
             target:
               entity_id:
                 - !input entity_schedule_confort
-          - service: switch.turn_on
-            target:
-              entity_id: !input entity_schedule_eco
-    # ----- Mode manuel
+          - service: timer.start
+            entity_id: !input entity_timer_derogation
+            
+
     default:
       - service: switch.turn_off
         target:
           entity_id:
-            - !input entity_schedule_eco
             - !input entity_schedule_confort
       - service: automation.turn_on
         target:
