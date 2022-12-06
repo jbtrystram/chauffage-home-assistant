@@ -50,11 +50,20 @@ blueprint:
 variables:
   temperature_hg: 8
   temperature_absence: 17
+  duree_derog: !input entity_derogation
 alias: Pilotage chauffage bureau
 description: ''
 trigger:
   - platform: state
     entity_id: !input entity_mode
+  - platform: event # -- trigger when the derogation timer ended
+    id: "timer_finished"
+    event_type: timer.finished
+    event_data:
+      entity_id: !input entity_timer_derogation
+  - platform: state # -- trigger when the derogation duration input changed
+    id: "duree_derog_changed"
+    entity_id: !input entity_derogation
 condition: []
 action:
   - choose:
@@ -66,82 +75,88 @@ action:
           - service: input_number.set_value
             data:
               value: 0
-            target:
-              entity_id: !input entity_consigne
+            entity_id: !input entity_consigne
           - service: switch.turn_off
-            target:
-              entity_id:
-                - !input entity_schedule_confort
+            entity_id: !input entity_schedule_confort
           - service: automation.turn_off
-            target:
-              entity_id: !input entity_thermostat_tpi
+            entity_id: !input entity_thermostat_tpi
+          - service: timer.cancel
+            entity_id: !input entity_timer_derogation
       - conditions: # ------------------- Mode HORS GEL
           - condition: state
             entity_id: !input entity_mode
             state: Hors-gel
         sequence:
           - service: automation.turn_on
-            target:
-              entity_id: !input entity_thermostat_tpi
+            entity_id: !input entity_thermostat_tpi
           - service: input_number.set_value
             data:
               value: '{{temperature_hg}}'
-            target:
-              entity_id: !input entity_consigne
+            entity_id: !input entity_consigne
           - service: switch.turn_off
-            target:
-              entity_id:
-                - !input entity_schedule_confort
+            entity_id: !input entity_schedule_confort
+          - service: timer.cancel
+            entity_id: !input entity_timer_derogation
       - conditions: # ------------------- Mode Auto
           - condition: state
             entity_id: !input entity_mode
             state: Auto
         sequence:
           - service: automation.turn_on
-            target:
-              entity_id: !input entity_thermostat_tpi
+            entity_id: !input entity_thermostat_tpi
           - service: switch.turn_on
-            target:
-              entity_id: !input entity_schedule_confort
+            entity_id: !input entity_schedule_confort
+          - service: timer.cancel
+            entity_id: !input entity_timer_derogation
       - conditions: # ------------------- Mode Absent
           - condition: state
             entity_id: !input entity_mode
             state: Absent
         sequence:
           - service: automation.turn_on
-            target:
-              entity_id: !input entity_thermostat_tpi
+            entity_id: !input entity_thermostat_tpi
           - service: input_number.set_value
             data:
               value: '{{temperature_absence}}'
-            target:
-              entity_id: !input entity_consigne
+            entity_id: !input entity_consigne
           - service: switch.turn_off
-            target:
-              entity_id:
-                - !input entity_schedule_confort
-      - conditions: # ------------------- Mode Dérogation
-          - condition: state
-            entity_id: !input entity_mode
-            state: Dérogation
+            entity_id: !input entity_schedule_confort
+          - service: timer.cancel
+            entity_id: !input entity_timer_derogation
+      - conditions: # ------------------- Mode Dérogation fini
+          - and:  # Timer is finished
+            - condition: state
+              entity_id: !input entity_mode
+              state: Dérogation
+            - condition: trigger
+              id: "timer_finished"
         sequence:
-          - service: automation.turn_on
+          # On revient sur le auto quand la dérogation est terminée
+          - service: input_select.select_option
+            data:
+              option: Auto
             target:
-              entity_id: !input entity_thermostat_tpi
+              entity_id: !input entity_mode
+      - conditions: # ------------------- Mode Dérogation début
+          - or:
+            - condition: state
+              entity_id: !input entity_mode
+              state: Dérogation
+            - condition: trigger  # Démarrer aussi si la durée de la dérog a changé
+              id: "duree_derog_changed"
+        sequence:
           - service: switch.turn_off
-            target:
-              entity_id:
-                - !input entity_schedule_confort
+            entity_id: !input entity_schedule_confort
+          - service: automation.turn_on
+            entity_id: !input entity_thermostat_tpi
           - service: timer.start
             entity_id: !input entity_timer_derogation
-            
+            data_template:
+              duration: "{{states[duree_derog].state | int}}:00:00"
 
     default:
       - service: switch.turn_off
-        target:
-          entity_id:
-            - !input entity_schedule_confort
+        entity_id: !input entity_schedule_confort
       - service: automation.turn_on
-        target:
-          entity_id: !input entity_thermostat_tpi
-mode: single
+        entity_id: !input entity_thermostat_tpi
+mode: restart
