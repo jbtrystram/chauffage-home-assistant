@@ -38,7 +38,7 @@ blueprint:
       selector:
         entity:
           domain: switch
-          multiple: false
+          multiple: true
     entity_thermostat_tpi:
       name: Thermostat
       description: Entité de gestion du thermostat TPI (automation)
