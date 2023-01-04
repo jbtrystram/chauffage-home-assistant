@@ -1,0 +1,31 @@
+blueprint:
+  name: Estimation conso chauffage
+  description: "Surveillance de l'état du raditateur pour estimer la conso d'électricité"
+  domain: automation
+  input:
+    counter:
+      name: Compteur
+      selector:
+        entity:
+          domain: counter
+          multiple: false
+    chauffage:
+      name: Chauffage
+      description: Menu du chauffage (input_select)
+      selector:
+        entity:
+          domain: input_select
+
+trigger:
+  - platform: time_pattern
+    minutes: /1
+condition:
+  - condition: state
+    entity_id: !input chauffage
+    state: Confort
+action:
+  - service: counter.increment
+    data: {}
+    target:
+      entity_id: !input counter
+mode: single

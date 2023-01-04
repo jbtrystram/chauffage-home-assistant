@@ -31,10 +31,9 @@ blueprint:
         entity:
           domain: input_select
           multiple: false
-    entity_schedule_confort:
-      name: Schedule mode confort
-      description: Entité générée par schedule pour la planification du mode confort
-        (switch)
+    entity_schedule:
+      name: Schedules
+      description: Entités générées par schedule pour la planification (switch)
       selector:
         entity:
           domain: switch
@@ -77,7 +76,7 @@ action:
               value: 0
             entity_id: !input entity_consigne
           - service: switch.turn_off
-            entity_id: !input entity_schedule_confort
+            entity_id: !input entity_schedule
           - service: automation.turn_off
             entity_id: !input entity_thermostat_tpi
           - service: timer.cancel
@@ -94,7 +93,7 @@ action:
               value: '{{temperature_hg}}'
             entity_id: !input entity_consigne
           - service: switch.turn_off
-            entity_id: !input entity_schedule_confort
+            entity_id: !input entity_schedule
           - service: timer.cancel
             entity_id: !input entity_timer_derogation
       - conditions: # ------------------- Mode Auto
@@ -105,7 +104,7 @@ action:
           - service: automation.turn_on
             entity_id: !input entity_thermostat_tpi
           - service: switch.turn_on
-            entity_id: !input entity_schedule_confort
+            entity_id: !input entity_schedule
           - service: timer.cancel
             entity_id: !input entity_timer_derogation
       - conditions: # ------------------- Mode Absent
@@ -120,7 +119,7 @@ action:
               value: '{{temperature_absence}}'
             entity_id: !input entity_consigne
           - service: switch.turn_off
-            entity_id: !input entity_schedule_confort
+            entity_id: !input entity_schedule
           - service: timer.cancel
             entity_id: !input entity_timer_derogation
       - conditions: # ------------------- Mode Dérogation fini
@@ -146,7 +145,7 @@ action:
               id: "duree_derog_changed"
         sequence:
           - service: switch.turn_off
-            entity_id: !input entity_schedule_confort
+            entity_id: !input entity_schedule
           - service: automation.turn_on
             entity_id: !input entity_thermostat_tpi
           - service: timer.start
@@ -156,7 +155,7 @@ action:
 
     default:
       - service: switch.turn_off
-        entity_id: !input entity_schedule_confort
+        entity_id: !input entity_schedule
       - service: automation.turn_on
         entity_id: !input entity_thermostat_tpi
 mode: restart
