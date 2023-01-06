@@ -18,6 +18,9 @@ counter:
     minimum: 0
     # Example for a 1000 W heater. 1000/60
     step: 16.6
+    # We don't restore the counter on restarts.
+    # In my setup, HA restart daily, so it saves me an automation that resets the counters every day.
+    restore: false 
 ```
 
 The template sensor look like this:

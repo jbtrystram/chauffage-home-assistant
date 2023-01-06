@@ -19,7 +19,7 @@ A few helpers are needed :
 - Input numbers:
   - room target temperature
   - Override duration
-  - power target for the heater (computed by the proportionnal thermostat)
+  - power target for the heater (computed by the proportional thermostat)
 - Input select for selecting the heating mode 
 - Timer for the override duration 
 
@@ -68,7 +68,12 @@ timer:
 ### Schedule 
 
 In this setup I use the scheduler and scheduler card from HACS to setup the times and schedules. 
-See here: https://github.com/nielsfaber/scheduler-component 
+See here: https://github.com/nielsfaber/scheduler-component
+
+### Blueprints
+
+Once you have created the helpers and the scheduler you can create the automations using the blueprints. 
+Create the "Thermostat TPI" first, then the "Pilotage chauffage"
 
 ### Lovelace Card
 
@@ -76,50 +81,54 @@ See here: https://github.com/nielsfaber/scheduler-component
 
 ```yaml
 type: custom:vertical-stack-in-card
-title: Bureau JB
+title: Salon
+style: |
+  ha-card {
+  overflow: visible !important;
+  }
 cards:
-- type: custom:hui-element
-  card_type: glance
-  show_name: false
-  entities:
-  - entity: sensor.bureau_temperature_sonoff_temperature
-  - entity: input_number.bureau_temperature_consigne
-    icon: mdi:target
-  - entity: switch.schedule_bureau_confort
-  - entity: input_number.bureau_puissance_chauffage
-    icon: mdi:lightning-bolt
-- type: entities
-  entities:
-  - entity: input_select.bureau_chauffage_mode
-    name: Mode
-- type: conditional
-  conditions:
-  - entity: input_select.bureau_chauffage_mode
-    state: Dérogation
-    card:
-    type: entities
+  - type: custom:hui-element
+    card_type: glance
+    show_name: false
     entities:
-    - entity: input_number.bureau_temperature_consigne
-      type: custom:numberbox-card
-      name: Réglage consigne
-    - entity: timer.bureau_chauffage_derog
-      name: Temps restant
-    - entity: input_number.bureau_derogation_chauffage
-      type: custom:numberbox-card
-      name: Durée de la dérogation
-- type: custom:mini-graph-card
-  entities:
-    - sensor.bureau_temperature_sonoff_temperature
-  points_per_hour: 3
-  align_state: right
-  font_size: 75
-  height: 100
-  show:
-    name: false
-    legend: true
-    icon: false
-    labels: true
-    state: false
+      - entity: sensor.salon_temperature_sonoff_temperature
+      - entity: input_number.salon_chauffage_consigne
+        icon: mdi:target
+      - entity: switch.schedule_salon_week_end
+      - entity: sensor.salon_radiateur_conso
+        icon: mdi:lightning-bolt
+  - type: entities
+    entities:
+      - entity: input_select.salon_chauffage_mode
+        name: Mode
+  - type: conditional
+    conditions:
+      - entity: input_select.salon_chauffage_mode
+        state: Dérogation
+    card:
+      type: entities
+      entities:
+        - entity: input_number.salon_chauffage_consigne
+          type: custom:numberbox-card
+          name: Réglage consigne
+        - entity: timer.salon_chauffage_derogation
+          name: Temps restant
+        - entity: input_number.salon_chauffage_duree_derog
+          type: custom:numberbox-card
+          name: Durée de la dérogation
+  - type: custom:mini-graph-card
+    entities:
+      - sensor.salon_temperature_sonoff_temperature
+    points_per_hour: 3
+    align_state: right
+    font_size: 75
+    height: 100
+    show:
+      name: false
+      legend: true
+      icon: false
+      labels: true
+      state: false
 ```
 
 There is an issue due to
