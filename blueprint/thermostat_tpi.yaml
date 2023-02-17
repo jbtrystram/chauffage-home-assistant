@@ -40,6 +40,17 @@ blueprint:
         entity:
           domain: sensor
           device_class: temperature
+    unavailable_temp_threshold:
+      name: Seuil de température mode confort
+      description: >-
+        Dans le cas où la température intérieure est indisponible, l'automatisation 
+        bascule le radiateur sur le mode "confort" si la tepérature de consigne
+        est au dessus de cette valeur, ou en mode "eco" si en dessous.
+      selector:
+        number:
+          min: 15
+          max: 25
+          step: 1
     entity_puissance:
       name: Puissance
       description: Champ d'affichage de la puissance (input_number)
@@ -62,60 +73,82 @@ variables:
 
 trigger:
   - platform: time_pattern
-    minutes: "/10"
+    minutes: "/20"
   - platform: state
     entity_id: !input entity_consigne
-
 
 action:
   - alias: récupération des données
     variables:
       entity_consigne: !input entity_consigne
       consigne: "{{states(entity_consigne)}}"
-      temp_ext: '{{ states(entity_temp_ext) }}'
-      temp_int: '{{ states(entity_temp_int) }}'
-      puissance: >-
-        {%set val = coeff_c * (consigne - temp_int) + coeff_t * (consigne -
-        temp_ext) %}  {% if val > 1 %} {% set val = 100 %}  {% elif val < 0 %} 
-        {% set val = 0 %}  {% else %} {% set val = ( (val *
-        100) | round(0)) %} {% endif %} {{val}}
-      temps_chauffe: '{{ puissance * 6 }}'
-  - alias: Met à jour l'indicateur de puissance
-    service: input_number.set_value
-    target:
-      entity_id: !input entity_puissance
-    data:
-      value: '{{puissance}}'  
+      temp_ext: "{{ states(entity_temp_ext) }}"
+      temp_int: "{{ states(entity_temp_int) }}"
   - choose:
-      - conditions:
-          - condition: template
-            value_template: '{{puissance == 0}}'
+      - conditions: "{{ not (temp_int == 'offline' or temp_int == 'unavailable') }}"
         sequence:
-          - service: input_select.select_option
-            data:
-              option: Arrêt
+          - variables:
+              puissance: >-
+                {%set val = coeff_c * (consigne - temp_int) + coeff_t * (consigne - temp_ext) %}  
+                {% if val > 1 %} 
+                    {% set val = 100 %}  
+                {% elif val < 0 %} 
+                    {% set val = 0 %}  
+                {% else %} 
+                    {% set val = ( (val * 100) | round(0)) %} 
+                {% endif %} 
+                {{val}}
+              temps_chauffe: "{{ puissance * 6 }}"
+          - alias: Met à jour l'indicateur de puissance
+            service: input_number.set_value
             target:
-              entity_id: !input entity_chauffage
-      - conditions:
-          - condition: template
-            value_template: '{{ puissance > 99}}'
-        sequence:
-          - service: input_select.select_option
+              entity_id: !input entity_puissance
             data:
-              option: Confort
-            target:
-              entity_id: !input entity_chauffage
+              value: "{{puissance}}"
+
+          - choose:
+              - conditions: "{{puissance == 0}}"
+                sequence:
+                  - service: input_select.select_option
+                    data:
+                      option: Arrêt
+                    target:
+                      entity_id: !input entity_chauffage
+              - conditions: "{{ puissance > 99}}"
+                sequence:
+                  - service: input_select.select_option
+                    data:
+                      option: Confort
+                    target:
+                      entity_id: !input entity_chauffage
+            default:
+              - service: input_select.select_option
+                data:
+                  option: Confort
+                target:
+                  entity_id: !input entity_chauffage
+              - delay: "{{temps_chauffe}}"
+              - service: input_select.select_option
+                data:
+                  option: Arrêt
+                target:
+                  entity_id: !input entity_chauffage
+    # The temp sensor is unavailable, use heaters presets
     default:
-      - service: input_select.select_option
-        data:
-          option: Confort
-        target:
-          entity_id: !input entity_chauffage
-      - delay: '{{temps_chauffe}}'
-      - service: input_select.select_option
-        data:
-          option: Arrêt
-        target:
-          entity_id: !input entity_chauffage
+      - variables:
+          threshold: !input unavailable_temp_threshold
+      - choose:
+          - conditions: "{{ consigne > threshold }}"
+            sequence:
+              - service: input_select.select_option
+                data:
+                  option: Confort
+                target:
+                  entity_id: !input entity_chauffage
+        default:
+          - service: input_select.select_option
+            data:
+              option: Eco
+            target:
+              entity_id: !input entity_chauffage
 mode: restart
- 
