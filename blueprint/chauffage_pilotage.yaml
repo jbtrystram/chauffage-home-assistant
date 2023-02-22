@@ -45,6 +45,15 @@ blueprint:
         entity:
           domain: automation
           multiple: false
+    entity_radiateur:
+      name: Menu pilote du radiateur
+      description: | 
+        Entité d'ordre du fil pilote radiateur (eco/confort/stop/hors-gel) (input_select).
+        Utilisé pour forcer le mode hors gel ou arrêt sans passer par l'automatisation thermostat.
+      selector:
+        entity:
+          domain: input_select
+          multiple: false
   source_url: https://raw.githubusercontent.com/jbtrystram/chauffage-home-assistant/main/blueprint/chauffage_pilotage.yaml
 variables:
   temperature_hg: 8
@@ -81,12 +90,17 @@ action:
             entity_id: !input entity_thermostat_tpi
           - service: timer.cancel
             entity_id: !input entity_timer_derogation
+          - service: input_select.select_option
+            data:
+              option: Arrêt
+            target:
+              entity_id: !input entity_radiateur
       - conditions: # ------------------- Mode HORS GEL
           - condition: state
             entity_id: !input entity_mode
             state: Hors-gel
         sequence:
-          - service: automation.turn_on
+          - service: automation.turn_off
             entity_id: !input entity_thermostat_tpi
           - service: input_number.set_value
             data:
@@ -96,6 +110,11 @@ action:
             entity_id: !input entity_schedule
           - service: timer.cancel
             entity_id: !input entity_timer_derogation
+          - service: input_select.select_option
+            data:
+              option: Hors-gel
+            target:
+              entity_id: !input entity_radiateur
       - conditions: # ------------------- Mode Auto
           - condition: state
             entity_id: !input entity_mode
