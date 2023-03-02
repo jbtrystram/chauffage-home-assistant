@@ -4,6 +4,17 @@ blueprint:
   domain: automation
 
   input:
+    interval:
+      name: Intervalle de déclenchement
+      description: >-
+         Durée de la boucle de chauffage. 
+         A ajuster en fonction de l'inertie du radiateur, et de la durée de la montée en chauffe.
+         Valeur en minutes.
+      selector:
+        number:
+          min: 10
+          max: 120
+          step: 1
     coeff_c:
       name: Coefficient C
       description: coefficient multiplicateur de la différence entre la consigne et la température intérieure pour le calcul de la puissance (0.6 conseillé)
@@ -70,10 +81,12 @@ variables:
   coeff_t: !input coeff_t
   entity_temp_int: !input entity_temp_int
   entity_temp_ext: !input entity_temp_ext
+  temp_eco: 16
+  interval: !input interval
 
 trigger:
   - platform: time_pattern
-    minutes: "/20"
+    minutes: "/{{ interval }}"
   - platform: state
     entity_id: !input entity_consigne
 
@@ -99,6 +112,15 @@ action:
                 {% endif %} 
                 {{val}}
               temps_chauffe: "{{ puissance * 6 }}"
+              # Si la température ciblée est > a la température ECO du radiateur
+              # Alors passer le radiateur en eco plutôt que stop, afin d'éviter
+              # un radiateur coincé sur stop si HA fail.
+              stop_state: >-
+                {% set state = "Arrêt" %}
+                {% if consigne > temp_eco  %}
+                  {% set state = "Eco" %}
+                {% endif %}
+                {{ state }}
           - alias: Met à jour l'indicateur de puissance
             service: input_number.set_value
             target:
@@ -111,7 +133,7 @@ action:
                 sequence:
                   - service: input_select.select_option
                     data:
-                      option: Arrêt
+                      option: "{{stop_state}}"
                     target:
                       entity_id: !input entity_chauffage
               - conditions: "{{ puissance > 99}}"
@@ -130,7 +152,7 @@ action:
               - delay: "{{temps_chauffe}}"
               - service: input_select.select_option
                 data:
-                  option: Arrêt
+                  option: "{{stop_state}}"
                 target:
                   entity_id: !input entity_chauffage
     # The temp sensor is unavailable, use heaters presets
